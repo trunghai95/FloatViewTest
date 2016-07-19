@@ -1,18 +1,18 @@
 package com.example.haibt.floatviewtest;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.PixelFormat;
 import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
 
@@ -21,14 +21,12 @@ import java.util.Collections;
 
 public class FloatViewService extends Service {
 
+    private static final String CONFIGURATION_CHANGED = "android.intent.action.CONFIGURATION_CHANGED";
     private WindowManager mWindowManager;
     private ImageView mImageView = null;
-    private WindowManager.LayoutParams params;
-    private GestureDetector mGestureDetector;
+    private WindowManager.LayoutParams mParams;
+    private GestureDetector mGestureDetector;       // Used to detect click event
     private ArrayList<String> mPackageNames;
-
-    public FloatViewService() {
-    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -39,6 +37,10 @@ public class FloatViewService extends Service {
     public void onCreate() {
         super.onCreate();
         mPackageNames = new ArrayList<>(Collections.nCopies(9, ""));
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CONFIGURATION_CHANGED);
+        this.registerReceiver(mBroadcastReceiver, filter);
     }
 
     @Override
@@ -46,9 +48,15 @@ public class FloatViewService extends Service {
 
         Log.d("FloatViewService", "onStartCommand");
 
-        ArrayList<String> tmpArray = intent.getStringArrayListExtra("package_names");
-        if (tmpArray != null)
+        ArrayList<String> tmpArray = null;
+
+        if (intent != null) {
+            tmpArray = intent.getStringArrayListExtra("package_names");
+        }
+
+        if (tmpArray != null) {
             mPackageNames = tmpArray;
+        }
 
         if (mImageView != null) {
             return START_STICKY;
@@ -60,32 +68,30 @@ public class FloatViewService extends Service {
         mImageView = new ImageView(this);
         mImageView.setImageResource(R.mipmap.ic_launcher);
 
-        params = new WindowManager.LayoutParams(
+        mParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
 
-        params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = 0;
-        params.y = 0;
+        mParams.gravity = Gravity.TOP | Gravity.LEFT;
+        mParams.x = 0;
+        mParams.y = 0;
 
         mImageView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX;
             private int initialY;
             private float initialTouchX;
             private float initialTouchY;
-            private DisplayMetrics mDisplayMetrics;
 
             @Override public boolean onTouch(View v, MotionEvent event) {
 
-                mDisplayMetrics = new DisplayMetrics();
-                mWindowManager.getDefaultDisplay().getMetrics(mDisplayMetrics);
-
                 if (mGestureDetector.onTouchEvent(event)) {
-                    // onclick
+                    // On click event, start the main activity
                     Intent intent = new Intent(FloatViewService.this, MainActivity.class);
+
+                    // Use FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS to hide app from recent apps
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
                     intent.putStringArrayListExtra("package_names", mPackageNames);
                     startActivity(intent);
@@ -94,46 +100,65 @@ public class FloatViewService extends Service {
 
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        initialX = params.x;
-                        initialY = params.y;
+                        initialX = mParams.x;
+                        initialY = mParams.y;
                         initialTouchX = event.getRawX();
                         initialTouchY = event.getRawY();
                         return true;
+
                     case MotionEvent.ACTION_UP:
-                        Log.d("Icon pos", params.x + " " + params.y + " - "
-                                + mImageView.getWidth() + " " + mImageView.getHeight() + " - "
-                                + mDisplayMetrics.widthPixels + " " + mDisplayMetrics.heightPixels);
-
-                        params.x = Math.min(Math.max(0, params.x), mDisplayMetrics.widthPixels - mImageView.getWidth());
-                        params.y = Math.min(Math.max(0, params.y), mDisplayMetrics.heightPixels - mImageView.getHeight());
-
-                        // Distance to 2 sides of screen
-                        int d1, d2;
-                        d1 = params.x;
-                        d2 = mDisplayMetrics.widthPixels - params.x - mImageView.getWidth();
-
-                        if (d1 < d2) {
-                            params.x = 0;
-                        } else {
-                            params.x = mDisplayMetrics.widthPixels - mImageView.getWidth();
-                        }
-
-                        mWindowManager.updateViewLayout(mImageView, params);
-
+                        moveIconToSides();
                         return true;
+
                     case MotionEvent.ACTION_MOVE:
-                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        mWindowManager.updateViewLayout(mImageView, params);
+                        mParams.x = initialX + (int) (event.getRawX() - initialTouchX);
+                        mParams.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        mWindowManager.updateViewLayout(mImageView, mParams);
                         return true;
                 }
+
                 return false;
             }
         });
 
-        mWindowManager.addView(mImageView, params);
+        mWindowManager.addView(mImageView, mParams);
 
         return START_STICKY;
+    }
+
+    /** Listen to the screen rotation */
+    public BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent myIntent) {
+
+            if ( myIntent.getAction().equals(CONFIGURATION_CHANGED) ) {
+                moveIconToSides();
+            }
+        }
+    };
+
+    /** Move the icon to a side of the screen */
+    private void moveIconToSides() {
+        DisplayMetrics mDisplayMetrics = new DisplayMetrics();
+        mWindowManager.getDefaultDisplay().getMetrics(mDisplayMetrics);
+
+        // Standardize the coordinates
+        mParams.x = Math.min(Math.max(0, mParams.x), mDisplayMetrics.widthPixels - mImageView.getWidth());
+        mParams.y = Math.min(Math.max(0, mParams.y), mDisplayMetrics.heightPixels - mImageView.getHeight());
+
+        // Distance to 2 sides of screen
+        int d1, d2;
+        d1 = mParams.x;
+        d2 = mDisplayMetrics.widthPixels - mParams.x - mImageView.getWidth();
+
+        // Set the x-coordinate to the nearer side
+        if (d1 < d2) {
+            mParams.x = 0;
+        } else {
+            mParams.x = mDisplayMetrics.widthPixels - mImageView.getWidth();
+        }
+
+        mWindowManager.updateViewLayout(mImageView, mParams);
     }
 
     @Override
@@ -145,6 +170,8 @@ public class FloatViewService extends Service {
             mWindowManager.removeView(mImageView);
             mImageView = null;
         }
+
+        unregisterReceiver(mBroadcastReceiver);
     }
 
     private class SingleTapConfirm extends GestureDetector.SimpleOnGestureListener {

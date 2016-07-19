@@ -2,9 +2,7 @@ package com.example.haibt.floatviewtest;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 
 public class Launcher extends Activity {
 
@@ -16,10 +14,5 @@ public class Launcher extends Activity {
         finish();
         Intent intent = new Intent(this, FloatViewService.class);
         startService(intent);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
     }
 }

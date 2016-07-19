@@ -3,27 +3,21 @@ package com.example.haibt.floatviewtest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Vibrator;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.sa90.materialarcmenu.ArcMenu;
-
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class MainActivity extends Activity {
 
-    static final int MY_REQUEST_CODE = 12345;
-    static final float SCREEN_RATIO = 0.6f;
-    private List<ImageView> mImageList;
+    public static final int MY_REQUEST_CODE = 12345;
+    private static final float SCREEN_RATIO = 0.6f;
+    private ArrayList<ImageView> mImageList;
     private ArrayList<String> mPackageNames;
     private PackageManager mPm;
 

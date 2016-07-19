@@ -16,7 +16,6 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -24,11 +23,16 @@
         <service
             android:name=".FloatViewService"
             android:enabled="true"
-            android:exported="true" />
+            android:exported="true">
 
-        <activity android:name=".MainActivity"></activity>
+            <intent-filter>
+                <action android:name="android.intent.action.CONFIGURATION_CHANGED"/>
+            </intent-filter>
+        </service>
+
+        <activity android:name=".MainActivity"/>
         <activity android:name=".Chooser"
-            android:theme="@style/AppTheme"></activity>
+            android:theme="@style/AppTheme"/>
     </application>
 
 </manifest>
